@@ -32,6 +32,7 @@ import {
 // 导入插件
 import { registerAuthDecorators } from './plugins/auth-decorators.js'
 import { registerStaticServer } from './plugins/static-server.js'
+import { buildRateLimitErrorResponse } from './lib/rate-limit-error.js'
 
 // 导入调度器
 import { startSchedulers, stopSchedulers } from './services/schedulers.js'
@@ -195,7 +196,11 @@ fastify.setErrorHandler((error: FastifyError, _request, reply) => {
   const publicMessage = process.env.NODE_ENV === 'production' && statusCode >= 500
     ? 'Internal server error'
     : (error.message || 'Internal server error')
-  return reply.code(statusCode).send({ error: publicMessage })
+  const retryAfter = (error as FastifyError & { retryAfter?: string }).retryAfter
+  return reply.code(statusCode).send({
+    error: publicMessage,
+    retryAfter
+  })
 })
 
 // 注册插件
@@ -313,6 +318,21 @@ await fastify.register(fastifyWebsocket, {
   }
 })
 
+// 应用接口级别的速率限制配置
+// 必须在 @fastify/rate-limit 注册前添加，确保插件的 onRoute 能读取到 routeOptions.config.rateLimit。
+fastify.addHook('onRoute', (routeOptions) => {
+  const rule = findRateLimitRule(routeOptions.url, routeOptions.method as string)
+  if (rule) {
+    routeOptions.config = {
+      ...routeOptions.config,
+      rateLimit: {
+        max: rule.max,
+        timeWindow: rule.timeWindow
+      }
+    }
+  }
+})
+
 // 全局速率限制
 await fastify.register(rateLimit, {
   global: true,
@@ -325,29 +345,12 @@ await fastify.register(rateLimit, {
     }
     return request.ip
   },
-  errorResponseBuilder: (_request, context) => ({
-    error: 'Too many requests, please try again later',
-    retryAfter: context.after
-  }),
+  errorResponseBuilder: buildRateLimitErrorResponse,
   allowList: (request) => {
     if (!request.url.startsWith('/api/')) {
       return true
     }
     return isWhitelisted(request.url)
-  }
-})
-
-// 应用接口级别的速率限制配置
-fastify.addHook('onRoute', (routeOptions) => {
-  const rule = findRateLimitRule(routeOptions.url, routeOptions.method as string)
-  if (rule) {
-    routeOptions.config = {
-      ...routeOptions.config,
-      rateLimit: {
-        max: rule.max,
-        timeWindow: rule.timeWindow
-      }
-    }
   }
 })
 

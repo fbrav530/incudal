@@ -7,7 +7,7 @@ import * as db from '../db/index.js'
 import { hasAvailableMailOffering } from '../db/mail.js'
 import { createLog } from '../db/logs.js'
 import { apiError, ErrorCode } from '../lib/errors.js'
-import { testSmtpConnection, sendTestEmail, clearTransporterCache } from '../lib/mailer.js'
+import { isSmtpEnabled, testSmtpConnection, sendTestEmail, clearTransporterCache } from '../lib/mailer.js'
 import { logAdminAction } from '../lib/security.js'
 import { isSupportedInviteCostResource, serializeInviteCostOptions, type InviteCostOption } from '../lib/invite-pricing.js'
 
@@ -68,7 +68,7 @@ export default async function systemConfigRoutes(fastify: FastifyInstance) {
             db.getSystemConfigBoolean('turnstile_enabled', false),
             db.getSystemConfig('turnstile_site_key'),
             db.getSystemConfig('avatar_api_base'),
-            db.getSystemConfigBoolean('smtp_enabled', false),
+            isSmtpEnabled(),
             db.getSystemConfigBoolean('email_domain_whitelist_enabled', false),
             db.getSystemConfig('email_allowed_domains'),
             db.getSystemConfigFloat('transfer_fee', 0),

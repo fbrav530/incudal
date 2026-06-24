@@ -34,7 +34,8 @@ import {
 } from '../lib/security.js'
 import type { LoginRequest, RegisterRequest } from '../types/api.js'
 import { apiError, ErrorCode } from '../lib/errors.js'
-import { turnstileVerifier } from '../lib/turnstile.js'
+import { strictTurnstileVerifier, turnstileVerifier } from '../lib/turnstile.js'
+import { shouldVerifyTurnstileForRegister } from '../lib/register-turnstile.js'
 import { isSmtpEnabled, sendVerificationEmail, sendLoginAlertEmail, sendPasswordResetEmail, sendFreeSiteRegisterGiftEmail } from '../lib/mailer.js'
 import { createVerificationCode, verifyCode } from '../db/email-verification.js'
 import { validateEmailDomain } from '../lib/email-domain.js'
@@ -372,7 +373,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // 发送邮件验证码
   fastify.post<{ Body: { email: string; turnstileToken?: string } }>('/send-verification-code', {
-    preHandler: [turnstileVerifier],
+    preHandler: [strictTurnstileVerifier],
     schema: {
       body: {
         type: 'object',
@@ -445,7 +446,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // 用户注册 (支持邀请码可选，支持邮件验证码)
   fastify.post<{ Body: RegisterRequest & { turnstileToken?: string; emailCode?: string } }>('/register', {
-    preHandler: [turnstileVerifier],
     schema: {
       body: {
         type: 'object',
@@ -471,6 +471,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     if (!await ensureRegistrationEnabled(reply)) {
       return
+    }
+
+    const smtpEnabled = await isSmtpEnabled()
+    if (shouldVerifyTurnstileForRegister(smtpEnabled)) {
+      await strictTurnstileVerifier(request, reply)
+      if (reply.sent) {
+        return
+      }
     }
 
     // Validate username (prevent dangerous character injection)
@@ -508,7 +516,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
 
     // Check if email verification is required
-    const smtpEnabled = await isSmtpEnabled()
     if (smtpEnabled) {
       if (!emailCode) {
         return reply.code(400).send(apiError(ErrorCode.EMAIL_CODE_REQUIRED))
