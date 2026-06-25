@@ -35,6 +35,8 @@ export const useConfigStore = defineStore('config', () => {
     const turnstileEnabled = ref(false)
     const turnstileSiteKey = ref<string | null>(null)
     const transferFee = ref(0)
+    const balanceTransferEnabled = ref(false)
+    const balanceTransferFee = ref(0)
     const footerContactEmail = ref<string | null>('incudal@sent.com')
     const footerTelegramLink = ref<string | null>('https://t.me/incudal_com')
     const hostingMarketEntryEnabled = ref(true)
@@ -63,6 +65,8 @@ export const useConfigStore = defineStore('config', () => {
             brandSubtitle.value = config.brandSubtitle?.trim() || '基于 Incus 的低价 NAT VPS'
             brandLogoUrl.value = config.brandLogoUrl?.trim() || '/incudal_logo.webp'
             transferFee.value = config.transferFee || 0
+            balanceTransferEnabled.value = config.balanceTransferEnabled ?? false
+            balanceTransferFee.value = config.balanceTransferFee || 0
             footerContactEmail.value = config.footerContactEmail ?? null
             footerTelegramLink.value = config.footerTelegramLink ?? null
             hostingMarketEntryEnabled.value = config.hostingMarketEntryEnabled ?? true
@@ -92,6 +96,8 @@ export const useConfigStore = defineStore('config', () => {
         turnstileEnabled,
         turnstileSiteKey,
         transferFee,
+        balanceTransferEnabled,
+        balanceTransferFee,
         footerContactEmail,
         footerTelegramLink,
         hostingMarketEntryEnabled,

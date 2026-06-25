@@ -2181,6 +2181,8 @@ const api = {
       emailDomainWhitelistEnabled?: boolean
       allowedEmailDomains?: string[] | null
       transferFee?: number
+      balanceTransferEnabled?: boolean
+      balanceTransferFee?: number
       footerContactEmail?: string | null
       footerTelegramLink?: string | null
       hostingMarketEntryEnabled?: boolean
@@ -3243,6 +3245,7 @@ const api = {
         amount: number
         balanceBefore: number
         balanceAfter: number
+        orderId?: string | null
         instanceId: number | null
         instanceName: string | null
         remark: string | null
@@ -3252,6 +3255,51 @@ const api = {
       page: number
       pageSize: number
     }> => http.get('/balance/me/logs', { params }),
+
+    // 解析余额转账收款人
+    getBalanceTransferRecipient: (username: string): Promise<{
+      recipient: {
+        id: number
+        username: string
+        avatarStyle: string
+        avatarBadgeId: string | null
+      }
+    }> => http.get('/balance/transfer/recipient', { params: { username } }),
+
+    // 预览余额转账
+    previewBalanceTransfer: (recipientId: number, amount: number): Promise<{
+      preview: {
+        recipient: {
+          id: number
+          username: string
+          avatarStyle: string
+          avatarBadgeId: string | null
+        }
+        amount: number
+        fee: number
+        totalDeduction: number
+        currentBalance: number
+        balanceAfter: number
+      }
+    }> => http.post('/balance/transfer/preview', { recipientId, amount }),
+
+    // 提交余额转账
+    createBalanceTransfer: (recipientId: number, amount: number): Promise<{
+      transfer: {
+        transferNo: string
+        recipient: {
+          id: number
+          username: string
+          avatarStyle: string
+          avatarBadgeId: string | null
+        }
+        amount: number
+        fee: number
+        totalDeduction: number
+        currentBalance: number
+        balanceAfter: number
+      }
+    }> => http.post('/balance/transfer', { recipientId, amount }),
 
     // 获取可用支付渠道
     getPaymentProviders: (): Promise<{
